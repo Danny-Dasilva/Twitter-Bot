@@ -1,40 +1,40 @@
-
-
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-import time
+from time import sleep
 
-username = 'YOUR USERNAME'
-password = 'YOUR PASSWORD'
+username = 'YOUR_USERNAME'
+password = 'YOUR_PASSWORD'
 
 driver = webdriver.Firefox()
 driver.get("https://twitter.com/login")
 
-## Login
-time.sleep(1)
+def write(selector, message=None):
+    if message:
+        driver.find_element_by_css_selector(selector).send_keys(message)
+    else:
+        driver.find_element_by_css_selector(selector).click()
+
+## wait for page to load
+sleep(1)
+
+#Send Username and Password
 driver.find_element_by_name('session[username_or_email]').send_keys(username)
-
-
-#BSend Username and Password
 driver.find_element_by_name('session[password]').send_keys(password)
-driver.find_element_by_css_selector('[data-testid="LoginForm_Login_Button"]').click()
 
+#login
+write('[data-testid="LoginForm_Login_Button"]')
 
-time.sleep(1)
-driver.find_element_by_css_selector('[aria-label="Tweet"]').click()
+sleep(1)
 
+write('[aria-label="Tweet"]')
 
-time.sleep(1)
+sleep(1)
 
 # Select the tweet box
-el = driver.find_element_by_css_selector('.public-DraftStyleDefault-block')
-# not sure if you need to double click
-el.click()
-el.click()
+write('.public-DraftStyleDefault-block')
 
 # write
 msg = "Example msg"
-driver.find_element_by_css_selector('[aria-label="Tweet text"]').send_keys("Example msg")
+write('[aria-label="Tweet text"]', message=msg)
 
 # send tweet
-driver.find_element_by_css_selector('[data-testid="tweetButton"]').click()
+write('[data-testid="tweetButton"]')
