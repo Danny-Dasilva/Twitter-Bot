@@ -57,17 +57,18 @@ def parse_k(string):
         return int(string.replace(',', ''))
     else:
         return int(string)
-def get_follow_ratio(image):
+def get_like(image):
     width, height = image.size 
-    top = height * .45
-    bottom = height * .6
-    left = width * 0  
-    right = width * .95
-    cropped_img = image.crop((0, top, width, bottom)) 
+    top = height * .47
+    bottom = height * .51
+    left = width * 0.6
+    right = width * .665
+    cropped_img = image.crop((left, top, right, bottom)) 
     print(image.size)
-    im = cropped_img.convert('RGBA')
 
-    data = np.array(im)   # "data" is a height x width x 4 numpy array
+    data = np.array(cropped_img)   # "data" is a height x width x 4 numpy array
+    print(data)
+
     red, green, blue, alpha = data.T # Temporarily unpack the bands for readability
     
     # Replace white with red... (leaves alpha values alone...)
@@ -76,7 +77,42 @@ def get_follow_ratio(image):
     # white_areas = (red > 216) & (blue > 216) & (green > 216)
     # data[..., :-1][white_areas.T] = (255, 0, 0) # Transpose back needed
     # Find X,Y coordinates of all yellow pixels
-    yellowY, yellowX = np.where(np.all(data>=[216,216,216, 255],axis=2))
+
+    yellowY, yellowX = np.where(np.all(data>=[10,10,10, 255],axis=2))
+
+    top, bottom = min(yellowY), max(yellowY)
+    left, right = min(yellowX), max(yellowX) 
+    print(top, bottom, left, right, )
+    new = cropped_img.crop((left, top, right, bottom)) 
+    # print(np.array(new))
+    new.save('test.png', 'PNG')
+
+
+    result = np.any(data != [0, 0, 0, 255], axis=-1)
+    result = data[data != result]
+    print(result)
+    return "like" 
+
+
+def get_follow_ratio(image):
+    width, height = image.size 
+    top = height * .45
+    bottom = height * .6
+    left = width * 0  
+    right = width * .95
+    cropped_img = image.crop((0, top, width, bottom)) 
+    print(image.size)
+
+    data = np.array(cropped_img)   # "data" is a height x width x 4 numpy array
+    # red, green, blue, alpha = data.T # Temporarily unpack the bands for readability
+    
+    # Replace white with red... (leaves alpha values alone...)
+    # white_areas = (red < 216) | (blue < 216) | (green < 216)
+    # data[..., :-1][white_areas.T] = (0, 0, 0) # Transpose back needed
+    # white_areas = (red > 216) & (blue > 216) & (green > 216)
+    # data[..., :-1][white_areas.T] = (255, 0, 0) # Transpose back needed
+    # Find X,Y coordinates of all yellow pixels
+    yellowY, yellowX = np.where(np.all(data>=[216,216,216],axis=2))
 
     top, bottom = yellowY[0], yellowY[-1]
     left, right = yellowX[0], yellowX[-1]
@@ -147,9 +183,9 @@ def run():
 
     image = Image.open(io.BytesIO(image))
     width, height = image.size 
-    following, followers = get_follow_ratio(image) 
-    calculate_ratio(following, followers)
-
+    # following, followers = get_follow_ratio(image) 
+    # calculate_ratio(following, followers)
+    get_like(image)
 
 if __name__ == "__main__":
     count = 0 
