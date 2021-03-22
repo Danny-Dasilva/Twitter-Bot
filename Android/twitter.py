@@ -57,17 +57,43 @@ def parse_k(string):
         return int(string.replace(',', ''))
     else:
         return int(string)
+def return_like_cord(img):
+    thresh = cv2.inRange(img, (116,116,116, 255), (155,155,155, 255))
+    print(thresh)
+    contours, hiearchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area > 2000:
+            # print(area, contour)
+            cont = np.mean(contour, axis=0)
+            print(area, cont)
+            click = cont[0][1]
+            yield click
+    # cv2.drawContours(img, cn, -1, (0,255,0), 3)
+    # cv2.imshow('image', img)
+    # cv2.imwrite('image.png', img)
+    # cv2.waitKey(0)
+def click(x, y):
+    device.shell(f"input tap {x} {y}")
 def get_like(image):
     width, height = image.size 
     top = height * .47
     bottom = height * .51
     left = width * 0.6
     right = width * .665
-    cropped_img = image.crop((left, top, right, bottom)) 
+    center = width * .63
+    cropped_img = image.crop((left, 0, right, height)) 
     print(image.size)
 
-    data = np.array(cropped_img)   # "data" is a height x width x 4 numpy array
-    print(data)
+    data = np.array(cropped_img) 
+
+    out = return_like_cord(data)  
+    for val in out:
+        click(center, val)
+    # TO DO
+    #get specific color
+    #loop up through 
+    #check dimensions of upwards cube
 
     red, green, blue, alpha = data.T # Temporarily unpack the bands for readability
     
@@ -78,19 +104,19 @@ def get_like(image):
     # data[..., :-1][white_areas.T] = (255, 0, 0) # Transpose back needed
     # Find X,Y coordinates of all yellow pixels
 
-    yellowY, yellowX = np.where(np.all(data>=[10,10,10, 255],axis=2))
+    # yellowY, yellowX = np.where(np.all(data>=[10,10,10, 255],axis=2))
 
-    top, bottom = min(yellowY), max(yellowY)
-    left, right = min(yellowX), max(yellowX) 
-    print(top, bottom, left, right, )
-    new = cropped_img.crop((left, top, right, bottom)) 
-    # print(np.array(new))
-    new.save('test.png', 'PNG')
+    # top, bottom = min(yellowY), max(yellowY)
+    # left, right = min(yellowX), max(yellowX) 
+    # print(top, bottom, left, right, )
+    # new = cropped_img.crop((left, top, right, bottom)) 
+    # # print(np.array(new))
+    # image.save('test.png', 'PNG')
 
 
-    result = np.any(data != [0, 0, 0, 255], axis=-1)
-    result = data[data != result]
-    print(result)
+    # result = np.any(data != [0, 0, 0, 255], axis=-1)
+    # result = data[data != result]
+    # print(result)
     return "like" 
 
 
