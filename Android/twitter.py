@@ -1,7 +1,8 @@
 import re
+import random
 import cv2
 import pytesseract
-from PIL import Image
+from PIL import Image, ImageDraw
 from ppadb.client import Client
 import numpy as np
 
@@ -44,35 +45,79 @@ if len(devices) == 0:
     print('no device attached')
     quit()
 device = devices[0]
-# device.shell('input touchscreen swipe 500 500 500 500')
 
+
+def swipe(width, height):
+
+    x1 = width * random.uniform(.4, .5) 
+    y1 = height * random.uniform(.6, .75)
+    x2 = width * random.uniform(.4, .5)
+    y2 = height * random.uniform(.3, .4)
+    device.shell(f'input touchscreen swipe {x1} {y1} {x2} {y2}')
+
+    sleep(1)
 # image = device.screencap()
+def back(image):
+    width, height = image.size 
+    x = width * .08
+    y = height * .07
+    # r = 40 
+    # draw = ImageDraw.Draw(image)
 
+    # draw.ellipse((x-r, y-r, x+r, y+r), fill=(255,0,0,255))
+    # image.save('back.png', 'PNG')
+    sleep(.2)
+    click(x, y)
 def parse_k(string):
     if 'K' in string:
-        val = int(string.split('K')[0])
+        val = float(string.split('K')[0])
         val *= 1000
-        return val
+
+        return int(val)
     if ',' in string:
         return int(string.replace(',', ''))
     else:
         return int(string)
 def return_like_cord(img):
     thresh = cv2.inRange(img, (116,116,116, 255), (155,155,155, 255))
-    print(thresh)
+    # print(thresh)
     contours, hiearchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    cnt = []
+    for val in contours:
+        area = cv2.contourArea(val)
+        if area == 2359.0:
+            cnt.append(val)
+
+    cv2.drawContours(img, cnt,-1, (0,255,0), 3)
+    cv2.imwrite('example_like_contour.png', img)
     for contour in contours:
         area = cv2.contourArea(contour)
-        if area > 2000:
+        if area == 2359:
             # print(area, contour)
             cont = np.mean(contour, axis=0)
-            print(area, cont)
+            # print(area, cont)
             click = cont[0][1]
             yield click
-    # cv2.drawContours(img, cn, -1, (0,255,0), 3)
-    # cv2.imshow('image', img)
-    # cv2.imwrite('image.png', img)
-    # cv2.waitKey(0)
+def return_profile_cord(img):
+    thresh = cv2.inRange(img, (10,10,10, 255), (255,255,255, 255))
+    contours, hiearchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    # cnt = []
+    # for val in contours:
+        # area = cv2.contourArea(val)
+        # if area > 20000.0:
+            # cnt.append(val)
+            # print(area)
+
+    # cv2.drawContours(img, cnt,-1, (0,0,255), 3)
+    # cv2.imwrite('example_profile_cord.png', img)
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area > 27000.0:
+            cont = np.mean(contour, axis=0)
+            click = cont[0][1]
+            return click
+            # yield click
+
 def click(x, y):
     device.shell(f"input tap {x} {y}")
 def get_like(image):
@@ -83,96 +128,137 @@ def get_like(image):
     right = width * .665
     center = width * .63
     cropped_img = image.crop((left, 0, right, height)) 
-    print(image.size)
 
     data = np.array(cropped_img) 
 
     out = return_like_cord(data)  
     for val in out:
         click(center, val)
-    # TO DO
-    #get specific color
-    #loop up through 
-    #check dimensions of upwards cube
-
-    red, green, blue, alpha = data.T # Temporarily unpack the bands for readability
-    
-    # Replace white with red... (leaves alpha values alone...)
-    # white_areas = (red < 216) | (blue < 216) | (green < 216)
-    # data[..., :-1][white_areas.T] = (0, 0, 0) # Transpose back needed
-    # white_areas = (red > 216) & (blue > 216) & (green > 216)
-    # data[..., :-1][white_areas.T] = (255, 0, 0) # Transpose back needed
-    # Find X,Y coordinates of all yellow pixels
-
-    # yellowY, yellowX = np.where(np.all(data>=[10,10,10, 255],axis=2))
-
-    # top, bottom = min(yellowY), max(yellowY)
-    # left, right = min(yellowX), max(yellowX) 
-    # print(top, bottom, left, right, )
-    # new = cropped_img.crop((left, top, right, bottom)) 
-    # # print(np.array(new))
-    # image.save('test.png', 'PNG')
-
-
-    # result = np.any(data != [0, 0, 0, 255], axis=-1)
-    # result = data[data != result]
-    # print(result)
     return "like" 
+def get_account(image):
+    width, height = image.size 
+    right = width * .2
+    center = width * .1
+    cropped_img = image.crop((0, 0, right, height)) 
+
+    data = np.array(cropped_img) 
+
+    click_height = return_profile_cord(data)  
+    if click_height:
+        click(center, click_height)
+
+    
+        return get_image()
+
+    else:
+        return None
 
 
+
+def follow(image):
+    width, height = image.size 
+    top = height * .2
+    bottom = height * .27
+    left = width * .7 
+    right = width 
+    x = (left + right)  / 2
+    y = (top + bottom)  / 2
+    cropped_img = image.crop((left, top, right, bottom)) 
+    data = np.array(cropped_img)
+    yer = np.count_nonzero(np.all(data==[0,0,0,255 ],axis=2))
+    ratio = yer/ np.count_nonzero(data)
+    # ratio of black pixels should be .7 for follow and .18 for unfollow
+    if ratio > 0.6:
+        click(x, y)
+    else:
+        pass
+
+def select_latest(image):
+    width, height = image.size 
+    y = height * .15
+    x = width * .28
+
+    click(x, y)
+def select_type(image):
+    width, height = image.size 
+    x = width * .3 
+
+    y = height * .07
+    click(x, y)
+    
+def type(string):
+    # select_type(image)
+    device.shell("input keyevent 67")     
+    device.shell(f'input text {string}')
+
+    device.shell("input keyevent 66")     
 def get_follow_ratio(image):
     width, height = image.size 
-    top = height * .45
-    bottom = height * .6
+    top = height * .4
+    bottom = height * .75
     left = width * 0  
     right = width * .95
-    cropped_img = image.crop((0, top, width, bottom)) 
-    print(image.size)
-
+    # left = width * 0.085
+    # right = width * .2
+    import sys
+    # np.set_printoptions(threshold=sys.maxsize)
+    cropped_img = image.crop((left, top, right, bottom)) 
     data = np.array(cropped_img)   # "data" is a height x width x 4 numpy array
-    # red, green, blue, alpha = data.T # Temporarily unpack the bands for readability
-    
-    # Replace white with red... (leaves alpha values alone...)
-    # white_areas = (red < 216) | (blue < 216) | (green < 216)
-    # data[..., :-1][white_areas.T] = (0, 0, 0) # Transpose back needed
-    # white_areas = (red > 216) & (blue > 216) & (green > 216)
-    # data[..., :-1][white_areas.T] = (255, 0, 0) # Transpose back needed
-    # Find X,Y coordinates of all yellow pixels
-    yellowY, yellowX = np.where(np.all(data>=[216,216,216],axis=2))
+    cropped_img.save('killme.png', 'PNG')
+    thresh = cv2.inRange(data, (10, 100, 200, 255), (155,255,255, 255))
+    contours, hiearchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    cnt = []
+    for val in contours:
+        area = cv2.contourArea(val)
+        if area == 3267:
+            cnt.append(val)
+            cont = np.mean(val, axis=0)
+            offset = cont[0][1]
 
+    
+    cropped_2 = image.crop((left, top + offset - 450, width,top + offset - 200)) 
+    cropped_2.save("example_tweet.png", "PNG")
+    # cv2.drawContours(data, cnt,-1, (0,255,0), 3)
+
+    # cv2.imwrite('example_tweet.png', data)
+
+    data = np.array(cropped_2)   # "data" is a height x width x 4 numpy array
+    # print(data)
+    # print(np.where(np.all(data==[217,217,217,255], axis=2)))
+    yellowY, yellowX = np.where(np.all(data==[217,217,217,255 ],axis=2))
+    # print(yellowY, yellowX)
+    
+    yellowX = sorted(yellowX)
+    yellowY = sorted(yellowY)
     top, bottom = yellowY[0], yellowY[-1]
     left, right = yellowX[0], yellowX[-1]
-
+    # print(top, bottom, "ahh", yellowY[0])
     im2 = Image.fromarray(data)
-    new = im2.crop((0, top -20, width, bottom + 20))
-    # new.save('test.png', 'PNG')
-    read = pytesseract.image_to_string(new)
+    # new = im2.crop((0, top -20, width, bottom + 20))
+    # new.save('killm2.png', 'PNG')
+    read = pytesseract.image_to_string(im2)
     # #remove end of string
-    print(read)
     parsed = read.split("Followers")[0]
     following, followers = parsed.split("Following")
     followers = parse_k(followers)
     following = parse_k(following)
-    print(f'followers:{followers}, following:{following}')
+    print(f'followers: {followers}, following: {following}')
     return following, followers
 
 def calculate_ratio(following, followers):
     print(following, followers)
     ratio = following/followers
-    print(ratio)
     if ratio > 1.5:
-        print("follow")
-        print("like")
-    elif ratio > .75:
+        return True, True
+    elif ratio > .85:
         if following > 500:
-            print("follow")
-        else:
-            print("like")
+            return False, True
     else:
         if followers < 100:
-            print("follow")
+            return True, False
         else:
-            return False
+            return False, False
+            
 # cropped_img.save('like.png', 'PNG')
 
 #write images
@@ -182,36 +268,38 @@ def calculate_ratio(following, followers):
 
 # Setting the points for cropped image 
 
-def call():
-    print(percentage)
-    if percentage < 0.48:
-
-        im = crop_image(image, width, height)
-        read = pytesseract.image_to_string(im)
-        print(read)
-        search = 'North Texas'
-        if search in read or 'Clock' in read or 'UNT' in read:
-            print('donwload')
-            download(width, height)
-            return 1
-        else:
-            print('skip')
-            skip(width, height)
-            return 0
-    else:
-        print("already liked")
-        skip(width, height)
-        return 0 
-
-
-def run():
+def get_image():
+    sleep(.4)
     image = device.screencap()
 
     image = Image.open(io.BytesIO(image))
+
+    return image
+def run():
+    image = get_image()
     width, height = image.size 
+    for i in range(100):
+        swipe(width, height)
+
+        image = get_image()
+        image = get_account(image)
+        if image:
+            following, followers = get_follow_ratio(image) 
+            like, follow = calculate_ratio(following, followers)
+            back(image)
+
+    
+    # image = get_account(image)
     # following, followers = get_follow_ratio(image) 
     # calculate_ratio(following, followers)
-    get_like(image)
+
+    # follow(image)
+    # select_type(image)
+    # type("hello")
+    # select_latest(image)
+    # swipe(width, height)
+    # back(image)
+    # get_account(image)
 
 if __name__ == "__main__":
     count = 0 
